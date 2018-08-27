@@ -2,49 +2,61 @@
 
 Service that connect GraphQL queries with a microservice architecture.
 
+# Database
+
 ```
+$ createdb graph_test
+```
+
+Install goose
+
+```
+$ go get -tags nosqlite3 github.com/steinbacher/goose/cmd/goose
+```
+
+Run migrations
+```
+goose -path postgres -env development up
+```
+
+# Run server
+
+```
+$ go run cmd/server/main.go
+```
+
+# queries
+
+### To get all users
+
 query {
-    user(email:"test@finciero.com") {
+    users {
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        birthdate
+    }
+}
+
+### To get an specific user
+
+query {
+    user(email: "<email>") {
         id,
         first_name,
         last_name,
         email,
         phone,
         birthdate,
-        dni,
-        dni_type,
-        family_status,
-        gender,
-        title,
         address {
             address_line,
             city,
             locality,
             administrative_area_level_1,
             country,
-            place,
             postal_code
-        },
-        cards {
-            id,
-            user_id,
-            product_id,
-            card_number,
-            reference_email,
-            reference_user_id,
-            reference_id,
-            deposits {
-                id,
-                amount,
-                status,
-                payment_id,
-                total,
-                fee,
-                created_at,
-                dollar,
-                total
-            }
         }
     }
 }
-```
