@@ -29,6 +29,7 @@ $ go run cmd/server/main.go
 
 ### To get all users
 
+```
 query {
     users {
         id,
@@ -39,9 +40,11 @@ query {
         birthdate
     }
 }
+```
 
 ### To get an specific user
 
+```
 query {
     user(email: "<email>") {
         id,
@@ -60,3 +63,4 @@ query {
         }
     }
 }
+```
