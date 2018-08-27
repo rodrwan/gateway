@@ -33,7 +33,7 @@ $ curl -X POST \
   -H 'Content-Type: application/graphql' \
   -d 'query {
     users {
-				id,
+        id,
         first_name,
         last_name,
         email,
