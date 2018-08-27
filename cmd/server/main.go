@@ -46,6 +46,10 @@ const ContentTypeGraphQL = "application/graphql"
 
 func getUser(schema graphql.Schema) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "This server does not support that HTTP method", http.StatusBadRequest)
+			return
+		}
 		contentTypeStr := r.Header.Get("Content-Type")
 		contentTypeTokens := strings.Split(contentTypeStr, ";")
 		contentType := contentTypeTokens[0]
@@ -55,16 +59,17 @@ func getUser(schema graphql.Schema) http.HandlerFunc {
 		case ContentTypeGraphQL:
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				http.Error(w, "Could not read body", http.StatusInternalServerError)
+				http.Error(w, "could not read body", http.StatusInternalServerError)
 				return
 			}
 
 			result = executeQuery(string(body), schema)
 		default:
-			http.Error(w, "Missing application/graphql", http.StatusBadRequest)
+			http.Error(w, "bad content type", http.StatusBadRequest)
 		}
 
 		w.Header().Set("Accept-Encoding", "gzip")
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)
 	}
 }
