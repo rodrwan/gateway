@@ -9,8 +9,8 @@ import (
 	"github.com/rodrwan/gateway/graph/types"
 )
 
-// User fill graphql Field with data from postgres service.
-func User(ctx *graph.Context) *graphql.Field {
+// GetUser fill graphql Field with data from postgres service.
+func GetUser(ctx *graph.Context) *graphql.Field {
 	return &graphql.Field{
 		Type:        types.User,
 		Description: "Get user by email",
@@ -39,8 +39,8 @@ func User(ctx *graph.Context) *graphql.Field {
 	}
 }
 
-// Users fill graphql Field with data from postgres service.
-func Users(ctx *graph.Context) *graphql.Field {
+// GetUsers fill graphql Field with data from postgres service.
+func GetUsers(ctx *graph.Context) *graphql.Field {
 	return &graphql.Field{
 		Type:        graphql.NewList(types.User),
 		Description: "Get users",
@@ -55,13 +55,13 @@ func Users(ctx *graph.Context) *graphql.Field {
 	}
 }
 
-// UserQuery expose UserQuery
-func UserQuery(ctx *graph.Context) *graphql.Object {
+// Users expose UserQuery
+func Users(ctx *graph.Context) *graphql.Object {
 	return graphql.NewObject(graphql.ObjectConfig{
-		Name: "UserQuery",
+		Name: "UserQueries",
 		Fields: graphql.Fields{
-			"user":  User(ctx),
-			"users": Users(ctx),
+			"user":  GetUser(ctx),
+			"users": GetUsers(ctx),
 		},
 	})
 }

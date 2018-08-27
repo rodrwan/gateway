@@ -31,7 +31,7 @@ func main() {
 		UserService: us,
 	}
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query: queries.UserQuery(ctx),
+		Query: queries.Users(ctx),
 	})
 	check(err)
 
