@@ -214,8 +214,21 @@ func (us *UserService) Select(opts ...gateway.UserQueryOption) ([]*gateway.User,
 // All ...
 func (us *UserService) All() ([]*gateway.User, error) {
 	usstore := UserStore{us.Store}
+	uu, err := usstore.All()
+	if err != nil {
+		return nil, err
+	}
 
-	return usstore.All()
+	astore := AddressStore{us.Store}
+	for _, u := range uu {
+		a, err := astore.Find(u.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		u.Address = a
+	}
+	return uu, nil
 }
 
 // Create creates the given user.
