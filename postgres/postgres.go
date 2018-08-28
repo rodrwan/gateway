@@ -35,7 +35,8 @@ func NewDatastore(dsn string) (*sqlx.DB, error) {
 	return db, nil
 }
 
-func nfcString(nfd string) (nfc string) {
+// NFCString this method remove invalid chars.
+func NFCString(nfd string) (nfc string) {
 	isMn := func(r rune) bool {
 		return unicode.Is(unicode.Mn, r) // Mn: nonspacing marks
 	}

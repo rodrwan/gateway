@@ -13,6 +13,7 @@ import (
 	"github.com/rodrwan/gateway/graph"
 	"github.com/rodrwan/gateway/graph/queries"
 	"github.com/rodrwan/gateway/postgres"
+	"github.com/rodrwan/gateway/postgres/users"
 )
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	db, err := postgres.NewDatastore(*postgresDSN)
 	check(err)
 
-	us := &postgres.UserService{
+	us := &users.Service{
 		Store: db,
 	}
 

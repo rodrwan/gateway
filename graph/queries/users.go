@@ -45,7 +45,7 @@ func GetUsers(ctx *graph.Context) *graphql.Field {
 		Type:        graphql.NewList(types.User),
 		Description: "Get users",
 		Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-			uu, err := ctx.UserService.All()
+			uu, err := ctx.UserService.UsersWithAddress()
 			if err != nil {
 				return nil, err
 			}

@@ -15,7 +15,7 @@ type User struct {
 	Phone     string    `json:"phone,omitempty" db:"phone"`
 	Birthdate time.Time `json:"birthdate,omitempty" db:"birthdate"`
 
-	Address *Address `json:"address,omitempty" db:"-"`
+	Address *Address `json:"address,omitempty" db:"addresses"`
 }
 
 // UserService error definitions.
@@ -49,4 +49,5 @@ type UserService interface {
 	Get(...UserQueryOption) (*User, error)
 	Select(...UserQueryOption) ([]*User, error)
 	All() ([]*User, error)
+	UsersWithAddress() ([]*User, error)
 }

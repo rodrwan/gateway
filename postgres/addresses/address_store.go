@@ -1,4 +1,4 @@
-package postgres
+package addresses
 
 import (
 	"database/sql"
@@ -7,16 +7,17 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/lib/pq"
 	"github.com/rodrwan/gateway"
+	"github.com/rodrwan/gateway/postgres"
 )
 
-// AddressStore implements gateway.AddressStore interface with postgres as backend
-type AddressStore struct {
-	store SQLExecutor
+// Store implements gateway.AddressStore interface with postgres as backend
+type Store struct {
+	Store postgres.SQLExecutor
 }
 
 // Find search an address by user_id .
-func (as *AddressStore) Find(userID string) (*gateway.Address, error) {
-	row := as.store.QueryRowx(
+func (as *Store) Find(userID string) (*gateway.Address, error) {
+	row := as.Store.QueryRowx(
 		"select * from addresses where user_id = $1",
 		userID,
 	)
@@ -28,7 +29,7 @@ func (as *AddressStore) Find(userID string) (*gateway.Address, error) {
 }
 
 // Create creates a new address
-func (as *AddressStore) Create(a *gateway.Address) error {
+func (as *Store) Create(a *gateway.Address) error {
 	sql, args, err := squirrel.Insert("addresses").
 		Columns(
 			"user_id", "city", "address_line", "locality", "administrative_area_level_1",
@@ -45,7 +46,7 @@ func (as *AddressStore) Create(a *gateway.Address) error {
 		return addressError(err)
 	}
 
-	row := as.store.QueryRowx(sql, args...)
+	row := as.Store.QueryRowx(sql, args...)
 	if err := row.StructScan(a); err != nil {
 		return addressError(err)
 	}
@@ -54,7 +55,7 @@ func (as *AddressStore) Create(a *gateway.Address) error {
 }
 
 // Update update the given address
-func (as *AddressStore) Update(a *gateway.Address) error {
+func (as *Store) Update(a *gateway.Address) error {
 	sql, args, err := squirrel.Update("addresses").
 		Set("city", a.City).
 		Set("address_line", a.AddressLine).
@@ -70,7 +71,7 @@ func (as *AddressStore) Update(a *gateway.Address) error {
 		return err
 	}
 
-	row := as.store.QueryRowx(sql, args...)
+	row := as.Store.QueryRowx(sql, args...)
 	if err := row.StructScan(a); err != nil {
 		return addressError(err)
 	}
@@ -89,7 +90,7 @@ func addressError(err error) error {
 	}
 
 	switch pqerr.Code {
-	case InvalidTextRepresentation:
+	case postgres.InvalidTextRepresentation:
 		if strings.Contains(pqerr.Message, "user_requirement") {
 			return err
 		}
@@ -97,7 +98,7 @@ func addressError(err error) error {
 			return err
 		}
 		return err
-	case UniqueViolation:
+	case postgres.UniqueViolation:
 		return err
 	}
 

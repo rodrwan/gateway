@@ -1,4 +1,4 @@
-package postgres
+package users
 
 import (
 	"crypto/rand"
@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rodrwan/gateway"
+	"github.com/rodrwan/gateway/postgres"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 
 // UserStore implements gateway.UserStore interface with postgres as backend
 type UserStore struct {
-	store SQLExecutor
+	store postgres.SQLExecutor
 }
 
 // Get search a user by id.
@@ -71,6 +71,9 @@ func (us *UserStore) Select(opts ...gateway.UserQueryOption) ([]*gateway.User, e
 	}
 
 	q := squirrel.Select("*").From("users").Where("deleted_at is null")
+	if opt.Email != "" {
+		q = q.Where("email = ?", opt.Email)
+	}
 
 	sql, args, err := q.PlaceholderFormat(squirrel.Dollar).ToSql()
 	if err != nil {
@@ -98,6 +101,38 @@ func (us *UserStore) Select(opts ...gateway.UserQueryOption) ([]*gateway.User, e
 func (us *UserStore) All() ([]*gateway.User, error) {
 	rows, err := us.store.Queryx(
 		"select * from users",
+	)
+	if err != nil {
+		return nil, userError(err)
+	}
+	defer rows.Close()
+
+	users := []*gateway.User{}
+	for rows.Next() {
+		var user gateway.User
+		if err := rows.StructScan(&user); err != nil {
+			return nil, userError(err)
+		}
+		users = append(users, &user)
+	}
+
+	return users, nil
+}
+
+// UsersWithAddress ...
+func (us *UserStore) UsersWithAddress() ([]*gateway.User, error) {
+	rows, err := us.store.Queryx(
+		`select
+	users.*,
+	addresses.user_id "addresses.user_id",
+	addresses.address_line "addresses.address_line",
+	addresses.city "addresses.city",
+	addresses.locality "addresses.locality",
+	addresses.administrative_area_level_1 "addresses.administrative_area_level_1",
+	addresses.country "addresses.country",
+	addresses.postal_code "addresses.postal_code"
+	from users inner join addresses on addresses.user_id = users.id
+`,
 	)
 	if err != nil {
 		return nil, userError(err)
@@ -180,129 +215,6 @@ func (us *UserStore) Delete(u *gateway.User) error {
 	return nil
 }
 
-// UserService implements gateway.UserService using postgres as a backend.
-type UserService struct {
-	Store SQLExecutor
-}
-
-// Get returns the user associated with the given ID.
-func (us *UserService) Get(opts ...gateway.UserQueryOption) (*gateway.User, error) {
-	usstore := UserStore{us.Store}
-	astore := AddressStore{us.Store}
-
-	u, err := usstore.Get(opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	a, err := astore.Find(u.ID)
-	if err != nil {
-		return nil, err
-	}
-	u.Address = a
-
-	return u, nil
-}
-
-// Select ...
-func (us *UserService) Select(opts ...gateway.UserQueryOption) ([]*gateway.User, error) {
-	usstore := UserStore{us.Store}
-
-	return usstore.Select(opts...)
-}
-
-// All ...
-func (us *UserService) All() ([]*gateway.User, error) {
-	usstore := UserStore{us.Store}
-	uu, err := usstore.All()
-	if err != nil {
-		return nil, err
-	}
-
-	astore := AddressStore{us.Store}
-	for _, u := range uu {
-		a, err := astore.Find(u.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		u.Address = a
-	}
-	return uu, nil
-}
-
-// Create creates the given user.
-func (us *UserService) Create(u *gateway.User) error {
-	return us.transact(func(store SQLExecutor) error {
-		ustore := UserStore{store}
-		u.Phone = strings.Replace(u.Phone, " ", "", -1)
-
-		if err := ustore.Create(u); err != nil {
-			return err
-		}
-
-		if u.Address == nil {
-			return gateway.ErrUserInvalidAddress
-		}
-
-		astore := AddressStore{store}
-		u.Address.AddressLine = formatAddress(u.Address.AddressLine)
-		u.Address.UserID = u.ID
-		return astore.Create(u.Address)
-	})
-}
-
-// Update updates the fields of the given user. Ignores password and hashed passwords fields.
-func (us *UserService) Update(u *gateway.User) error {
-	return us.transact(func(store SQLExecutor) error {
-		ustore := UserStore{store}
-		astore := AddressStore{store}
-
-		if err := ustore.Update(u); err != nil {
-			return err
-		}
-
-		if u.Address == nil {
-			return gateway.ErrUserInvalidAddress
-		}
-
-		u.Address.AddressLine = formatAddress(u.Address.AddressLine)
-		u.Address.UserID = u.ID
-		return astore.Update(u.Address)
-	})
-}
-
-// Delete ...
-func (us *UserService) Delete(u *gateway.User) error {
-	return us.transact(func(store SQLExecutor) error {
-		ustore := UserStore{store}
-		return ustore.Delete(u)
-	})
-}
-
-// runs fn in a transactions and do a rollback in case of any error.
-func (us *UserService) transact(fn func(store SQLExecutor) error) error {
-	var tx *sqlx.Tx
-	var err error
-
-	switch store := us.Store.(type) {
-	case *sqlx.DB:
-		tx, err = store.Beginx()
-		if err != nil {
-			return err
-		}
-	case *sqlx.Tx:
-		tx = store
-	}
-
-	if err := fn(tx); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
-}
-
 func userError(err error) error {
 	if err == sql.ErrNoRows {
 		return gateway.ErrUserNotFound
@@ -314,9 +226,9 @@ func userError(err error) error {
 	}
 
 	switch pqerr.Code {
-	case InvalidTextRepresentation:
+	case postgres.InvalidTextRepresentation:
 		return gateway.ErrUserNotFound
-	case UniqueViolation:
+	case postgres.UniqueViolation:
 		return gateway.ErrUserAlreadyExists
 	}
 
@@ -345,7 +257,7 @@ func formatAddress(addr string) string {
 		"°", "",
 	)
 
-	addr = rep.Replace(nfcString(addr))
+	addr = rep.Replace(postgres.NFCString(addr))
 	if len(addr) > addrMaxLen {
 		return addr[:addrMaxLen]
 	}
